@@ -28,8 +28,8 @@ func main() {
 	fmt.Printf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
 }
 
-// 44s on Macbook Pro M1 8 core
-func processConcurrentByPartition(file *os.File) map[string]int64 {
+// 21s on Macbook Pro M1 8 core
+func processConcurrentByPartition(file *os.File) map[string]*Summary {
 	parts, err := calcPartitions(file, kMaxMemroyBytes, kMaxChannels)
 	if err != nil {
 		log.Fatalf("Failed to calculate file partitions: %v", err)
@@ -37,20 +37,25 @@ func processConcurrentByPartition(file *os.File) map[string]int64 {
 	fmt.Printf("Processing concurrently by partition: %d parts\n", len(*parts))
 
 	// counting semaphore to limit concurrency
-	tokens := make(chan struct{}, kMaxChannels)
-
-	// Reading sequentially because concurrent file reads seem horribly slow
-	var fileMu sync.Mutex
+	tokens := make(chan struct{}, kMaxChannels*5)
 
 	var wg sync.WaitGroup
 
-	reusltsCh := make(chan map[string]int64, 1000)
+	reusltsCh := make(chan map[string]*Summary, 1000)
 	reusltsComplete := make(chan struct{})
-	out := make(map[string]int64)
+	out := make(map[string]*Summary)
 	go func() {
 		for res := range reusltsCh {
-			for k, v := range res {
-				out[k] += v
+			for k, summary := range res {
+                oSummmary, exists := out[k]
+                if !exists {
+                    out[k] = summary
+                    continue
+                }
+				oSummmary.total += summary.total
+				oSummmary.count += summary.count
+				oSummmary.min += min(oSummmary.min, summary.min)
+				oSummmary.max += max(oSummmary.max, summary.max)
 			}
 		}
 		close(reusltsComplete)
@@ -59,17 +64,15 @@ func processConcurrentByPartition(file *os.File) map[string]int64 {
 	for i, part := range *parts {
 		tokens <- struct{}{} // Acquire capacity
 		wg.Add(1)
-		go func(part Partition, index int) {
-			fileMu.Lock()
-			data, err := readPartition(file, part)
-			fileMu.Unlock()
-			if err != nil {
-				log.Fatalf("Failed to read file partition: %v", err)
-			}
-			processPartition(data, index, reusltsCh)
+        data, err := readPartition(file, part)
+        if err != nil {
+            log.Fatalf("Failed to read file partition: %v", err)
+        }
+		go func(dat *string, index int) {
+			processPartition(dat, index, reusltsCh)
 			<-tokens // Release
 			wg.Done()
-		}(part, i)
+		}(data, i)
 	}
 	wg.Wait()
 	close(reusltsCh)
