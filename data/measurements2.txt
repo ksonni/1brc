@@ -1,0 +1,26 @@
+a - something
+b - something else
+c - something hire
+d - something elser
+e - something meaner
+f - something maner
+g - something propane
+h - something gaseous
+i - something chlorine
+j - something sulphur
+k - something philador
+l - something vilador
+m - something lila
+n - something james
+o - something wingman
+p - something sporine
+q - something loreum
+r - something lasterus
+s - something angry
+t - something vs code
+u - something water
+v - something house
+w - something medical
+x - something balloon
+y - something flower
+z - something random
