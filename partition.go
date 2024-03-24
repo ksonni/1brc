@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
-	"log"
 	"math"
 	"os"
 )
@@ -15,20 +15,20 @@ type Partition struct {
 
 // Calculates partitions of a target size ensuring that each partition ends with a newline.
 // Uses seeking to perform partitioning without actually reading all the contents of the file.
-func calcPartitions(file *os.File) (*[]Partition, error) {
+func calcPartitions(file *os.File, maxMemory int64, targetParts int64) (*[]Partition, error) {
 	stat, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
 	size := stat.Size()
-	log.Printf("Size of file: %s\n", formatBytes(size))
-	log.Printf("Memory limit: %s\n", formatBytes(kMaxMemroyBytes))
+	fmt.Printf("Size of file: %s\n", formatBytes(size))
+	fmt.Printf("Memory limit: %s\n", formatBytes(maxMemory))
 
 	partSize := int64(math.Min(
-		float64(size/kMaxChannels),
-		float64(kMaxMemroyBytes/kMaxChannels),
+		float64(size/targetParts),
+		float64(maxMemory/targetParts),
 	))
-	log.Printf("Target size per partition: %s\n", formatBytes(partSize))
+	fmt.Printf("Target size per partition: %s\n", formatBytes(partSize))
 
 	var position int64
 	positions := []int64{0}
@@ -56,7 +56,7 @@ func calcPartitions(file *os.File) (*[]Partition, error) {
 	partitions := make([]Partition, nPositions)
 	for i := range positions {
 		if i != nPositions-1 {
-			partitions[i] = Partition{start: positions[i], length: positions[i+1]-positions[i]}
+			partitions[i] = Partition{start: positions[i], length: positions[i+1] - positions[i]}
 		} else {
 			partitions[i] = Partition{start: positions[i], length: size - positions[i]}
 		}
@@ -75,4 +75,3 @@ func readPartition(file *os.File, part Partition) (*string, error) {
 	s := string(out)
 	return &s, nil
 }
-
