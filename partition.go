@@ -78,9 +78,9 @@ func readPartition(file *os.File, part Partition) (*string, error) {
 	return &s, nil
 }
 
-func processPartition(data *string, index int, ch chan<- map[string]int64) {
-	counts := make(map[string]int64)
-	processPartitionMap(data, counts, index, ch)
+func processPartition(data *string, index int, ch chan<- map[string]*Summary) {
+	counts := make(map[string]*Summary)
+	processPartitionMap2(data, counts, index, ch)
 }
 
 func processPartitionMap(data *string, counts map[string]int64, index int, ch chan<- map[string]int64) {
@@ -92,67 +92,108 @@ func processPartitionMap(data *string, counts map[string]int64, index int, ch ch
 			continue
 		}
 		lines += 1
-		
-        var val int64
-        var multiplier int64 = 1
-        parsingNum := false
-        var colonInd int
-        for i, ch := range line {
-            if ch == ';' {
-                parsingNum = true
-                colonInd = i
-                continue
-            }
-            if !parsingNum {
-                continue
-            }
-            if ch == '-' {
-                multiplier = -1
-                continue
-            }
-            if ch == '.' {
-                continue
-            }
-            val = val * 10 + int64(ch-'0')
-        }
-        counts[line[:colonInd]] += multiplier * val
+
+		var val int64
+		var multiplier int64 = 1
+		parsingNum := false
+		var colonInd int
+		for i, ch := range line {
+			if ch == ';' {
+				parsingNum = true
+				colonInd = i
+				continue
+			}
+			if !parsingNum {
+				continue
+			}
+			if ch == '-' {
+				multiplier = -1
+				continue
+			}
+			if ch == '.' {
+				continue
+			}
+			val = val*10 + int64(ch-'0')
+		}
+		counts[line[:colonInd]] += multiplier * val
 	}
 	ch <- counts
 	fmt.Printf("Processed partition %d, num lines (millions): %d\n", index, lines/1_000_000)
 }
 
 func hash(s string) uint32 {
-    h := fnv.New32a()
-    h.Write([]byte(s))
-    return h.Sum32()
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
 }
 
-/// Just to see what the thoretical time limit would be
-func processPartitionMap2(data *string, counts map[int32]int64, index int, ch chan<- map[int32]int64) {
-    var lines int64
-    for i, ch := range *data {
-		if ch == '\n' {
-            lines += 1
-            counts[int32(i%1000)] += lines
-			continue
+type Summary struct {
+	total int64
+	count int64
+	min   int64
+	max   int64
+}
+
+// / Just to see what the thoretical time limit would be
+func processPartitionMap2(data *string, counts map[string]*Summary, index int, ch chan<- map[string]*Summary) {
+	var lines int64
+	wordStart := 0
+	wordEnd := 0
+	s := *data
+	var inNum = false
+	var multiplier int64 = 1
+	var number int64
+	for i, ch := range s {
+		switch ch {
+		case ';':
+			wordEnd = i
+		case '-':
+			multiplier = -1
+		case '.':
+			break
+		case '\n':
+            s := s[wordStart:wordEnd]
+            summary, exists := counts[s] 
+            if !exists {
+                sm := Summary{}
+                summary = &sm
+                counts[s] = summary
+            }
+
+            val := int64(number * multiplier)
+            
+            summary.total +=  val
+            summary.count += 1
+            summary.min = min(summary.min, val)
+            summary.max = max(summary.min, val)
+			
+            // Reset for next iteration
+            inNum = false
+			multiplier = 1
+			number = 0
+			wordStart = i + 1
+			lines += 1
+		default:
+			if inNum {
+				number = number*10 + int64(ch-'0')
+			}
 		}
-    }
-    ch <- counts
+	}
+	ch <- counts
 	fmt.Printf("Processed partition %d, num lines (millions): %d\n", index, lines/1_000_000)
 }
 
-/// Just to see what the time limit would be
+// / Just to see what the time limit would be
 func processPartitionMapNoOp(data *string, counts map[string]int64, index int, ch chan<- map[string]int64) {
 	sc := bufio.NewScanner(strings.NewReader(*data))
-    lines := 0
+	lines := 0
 	for sc.Scan() {
-        line := sc.Text()
+		line := sc.Text()
 		if line == "" {
 			continue
 		}
-        lines += 1
-    }
-    ch <- counts
+		lines += 1
+	}
+	ch <- counts
 	fmt.Printf("Processed partition %d, num lines (millions): %d\n", index, lines/1_000_000)
 }
-
