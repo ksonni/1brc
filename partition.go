@@ -20,10 +20,12 @@ func calcPartitions(file *os.File, maxPartSize int64) (*[]Partition, error) {
 		return nil, err
 	}
 	size := stat.Size()
-	fmt.Printf("Size of file: %s\n", formatBytes(size))
-
 	partSize := min(size, maxPartSize)
-	fmt.Printf("Target size per partition: %s\n", formatBytes(partSize))
+
+	if kDebugLogs {
+		fmt.Printf("Size of file: %s\n", formatBytes(size))
+		fmt.Printf("Target size per partition: %s\n", formatBytes(partSize))
+	}
 
 	var position int64
 	positions := []int64{0}
@@ -87,16 +89,19 @@ func processPartitionMap(data *string, counts map[string]*Summary, index int, ch
 	for i, ch := range s {
 		switch ch {
 		case ';':
+			inNum = true
 			wordEnd = i
 		case '-':
-			multiplier = -1
+			if inNum {
+				multiplier = -1
+			}
 		case '.':
 			break
 		case '\n':
-			s := s[wordStart:wordEnd]
+			word := s[wordStart:wordEnd]
 			val := number * multiplier
 
-			if summary, exists := counts[s]; exists {
+			if summary, exists := counts[word]; exists {
 				summary.total += val
 				summary.count += 1
 				if val < summary.min {
@@ -107,7 +112,7 @@ func processPartitionMap(data *string, counts map[string]*Summary, index int, ch
 				}
 			} else {
 				sm := Summary{total: val, count: 1, min: val, max: val}
-				counts[s] = &sm
+				counts[word] = &sm
 			}
 
 			// Reset for next iteration
@@ -123,4 +128,7 @@ func processPartitionMap(data *string, counts map[string]*Summary, index int, ch
 		}
 	}
 	ch <- counts
+	if kDebugLogs {
+		fmt.Printf("Partition %d: processed %.2fM lines\n", index, float64(lines)/1_000_000)
+	}
 }

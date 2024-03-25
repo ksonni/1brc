@@ -13,11 +13,21 @@ const kFilePath = "./data/measurements.txt"
 const kPartitionSizeBytes int64 = 32 * 1024 * 1024
 const kMaxChannels int64 = 8
 const kExpectedResults = 10_000
+const kDebugLogs = false
 
-// 20s on Macbook Pro M1 8 core
+// 14-15s on Macbook Pro M1 8 core
 func main() {
+    fmt.Println("Procesing file...")
 	start := time.Now()
 
+	result := Process()
+
+	fmt.Printf("Got %d entries in result\n", len(*result))
+
+	fmt.Printf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
+}
+
+func Process() *[]Result {
 	file, err := openFile(kFilePath)
 	if err != nil {
 		log.Fatalf("Failed to read file: %v", err)
@@ -25,11 +35,8 @@ func main() {
 	defer file.Close()
 
 	out := processSummaries(file)
-    result := formatResults(out)
-
-	fmt.Printf("Got %d entries in result\n", len(*result))
-
-	fmt.Printf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
+	result := formatResults(out)
+	return result
 }
 
 type Summary struct {
@@ -47,25 +54,25 @@ type Result struct {
 }
 
 func formatResults(summaries *map[string]*Summary) *[]Result {
-    s := *summaries
-    keys := make([]string, len(s))
-    i := 0
-    for k := range s {
-        keys[i] = k
-        i += 1 
-    }
-    slices.Sort(keys)
-    results := make([]Result, len(s))
-    for i, key := range keys {
-        summary := s[key]
-        results[i] = Result{
-            name: key,
-            mean: float64(summary.total)/float64(summary.count)/10,
-            max: float64(summary.max)/10,
-            min: float64(summary.min)/10,
-        }
-    }
-    return &results
+	s := *summaries
+	keys := make([]string, len(s))
+	i := 0
+	for k := range s {
+		keys[i] = k
+		i += 1
+	}
+	slices.Sort(keys)
+	results := make([]Result, len(s))
+	for i, key := range keys {
+		summary := s[key]
+		results[i] = Result{
+			name: key,
+			mean: float64(summary.total) / float64(summary.count) / 10,
+			max:  float64(summary.max) / 10,
+			min:  float64(summary.min) / 10,
+		}
+	}
+	return &results
 }
 
 func processSummaries(file *os.File) *map[string]*Summary {
@@ -74,7 +81,9 @@ func processSummaries(file *os.File) *map[string]*Summary {
 	if err != nil {
 		log.Fatalf("Failed to calculate file partitions: %v", err)
 	}
-	fmt.Printf("Processing concurrently by partition: %d partitions\n", len(*parts))
+	if kDebugLogs {
+		fmt.Printf("Processing concurrently by partition: %d partitions\n", len(*parts))
+	}
 
 	// Channel to aggregate results
 	results := make(map[string]*Summary)
