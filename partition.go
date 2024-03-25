@@ -12,13 +12,6 @@ type Partition struct {
 	length int64
 }
 
-type Summary struct {
-	total int64
-	count int64
-	min   int64
-	max   int64
-}
-
 // Calculates partitions of a target size ensuring that each partition ends with a newline.
 // Uses seeking to perform partitioning without actually reading all the contents of the file.
 func calcPartitions(file *os.File, maxPartSize int64) (*[]Partition, error) {
@@ -28,7 +21,6 @@ func calcPartitions(file *os.File, maxPartSize int64) (*[]Partition, error) {
 	}
 	size := stat.Size()
 	fmt.Printf("Size of file: %s\n", formatBytes(size))
-	fmt.Printf("Memory limit: %s\n", formatBytes(maxPartSize))
 
 	partSize := min(size, maxPartSize)
 	fmt.Printf("Target size per partition: %s\n", formatBytes(partSize))
@@ -131,5 +123,4 @@ func processPartitionMap(data *string, counts map[string]*Summary, index int, ch
 		}
 	}
 	ch <- counts
-	fmt.Printf("Processed partition %d, num lines (millions): %d\n", index, lines/1_000_000)
 }
