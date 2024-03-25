@@ -25,8 +25,8 @@ PASS
 - Read the chunks sequentially because concurrent file reads were found to be slower through experimentation
 - As each chunk is read, pass the data to a worker go routinew (Have as many workers as CPU cores to avoid excessive concurrency)
 - The worker then computes the stats for that chunk and passes a hash map with the result to another aggregator go-routine which merges these
-- The worker reads the data character by character and doesn't use strconv.ParseFloat, strings.Split etc. to avoid overhead
-- Intermediate results are represented as ints rather than floats for better performance. This is possible since the spec guaranteed a precision of 1 floating point.
+- The worker reads the data rune by rune and doesn't use `strconv.ParseFloat`, `strings.Split` etc. to avoid overhead
+- Intermediate results are represented as ints rather than floats for better performance. This is possible since the spec guarantees that numbers are represented as 1 floating point values.
 
 ## Building
 Need Python3 and go 1.2x to run the code. The 1B row file can be generated using: 
