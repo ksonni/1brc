@@ -6,7 +6,7 @@ The problem was originally presented as a Java challenge here, and is described 
 https://github.com/gunnarmorling/1brc
 
 ## Results
-Initially started with a simple scanner to read the file line by line and compute results into a hash map.
+Initially started with a simple scanner to read the file line by line and compute the results into a hash map.
 This took around 144 seconds on an 8 core M1 Macbook Pro. With concurrency and some optimisation, the time finally came down to around 14 seconds.
 The simpler unoptimised function was used as a test to verify correctness during optimisation.
 ```
