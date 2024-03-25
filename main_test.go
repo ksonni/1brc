@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"math"
 	"os"
 	"slices"
@@ -23,9 +22,13 @@ type TestSummary struct {
 const kTolerance float64 = 0.0001
 
 func TestEqualityWithSimpleFunction(t *testing.T) {
-	t.Logf("Processing file with effecient function...\n")
+	t.Logf("Processing file with efficient function...\n")
 	start := time.Now()
-	gotSlice := *Process()
+	results, err := ProcessFile()
+	if err != nil {
+		t.Fatalf("Failed to process file with efficient function: %v", err)
+	}
+	gotSlice := *results
 	t.Logf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
 
 	t.Logf("Processing file with simple function...\n")
@@ -54,7 +57,7 @@ func TestEqualityWithSimpleFunction(t *testing.T) {
 	}
 }
 
-func processSimple(t *testing.T) *[]Result {
+func processSimple(t *testing.T) *[]Stat {
 	summaries := processSummariesSimple(t)
 	s := *summaries
 	keys := make([]string, len(s))
@@ -64,10 +67,10 @@ func processSimple(t *testing.T) *[]Result {
 		i += 1
 	}
 	slices.Sort(keys)
-	results := make([]Result, len(s))
+	results := make([]Stat, len(s))
 	for i, key := range keys {
 		summary := s[key]
-		results[i] = Result{
+		results[i] = Stat{
 			name: key,
 			mean: summary.total / float64(summary.count),
 			max:  summary.max,
@@ -99,7 +102,7 @@ func processSummariesSimple(t *testing.T) *map[string]*TestSummary {
 		if err != nil {
 			t.Errorf("Failed to parse value in line: %s\n", line)
 		}
-		summary, exists := counts[parts[0]]
+		stat, exists := counts[parts[0]]
 		if !exists {
 			s := TestSummary{
 				name:  parts[0],
@@ -110,14 +113,14 @@ func processSummariesSimple(t *testing.T) *map[string]*TestSummary {
 			}
 			counts[parts[0]] = &s
 		} else {
-			summary.total += n
-			summary.count += 1
-			summary.min = min(summary.min, n)
-			summary.max = max(summary.max, n)
+			stat.total += n
+			stat.count += 1
+			stat.min = min(stat.min, n)
+			stat.max = max(stat.max, n)
 		}
 	}
 	if err := sc.Err(); err != nil {
-		log.Fatalf("scan file error: %v", err)
+		t.Fatalf("scan file error: %v", err)
 	}
 	return &counts
 }
