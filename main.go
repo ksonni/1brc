@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"slices"
 	"sync"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 const kFilePath = "./data/measurements.txt"
 const kPartitionSizeBytes int64 = 32 * 1024 * 1024
-const kMaxChannels int64 = 8
 const kExpectedResults = 10_000
 const kDebugLogs = false
 
@@ -23,7 +23,6 @@ func main() {
 	result := Process()
 
 	fmt.Printf("Got %d entries in result\n", len(*result))
-
 	fmt.Printf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
 }
 
@@ -107,7 +106,11 @@ func processSummaries(file *os.File) *map[string]*Summary {
 	}()
 
 	// Worker channels to process data
-	tokens := make(chan struct{}, kMaxChannels)
+    nWorkers := runtime.NumCPU()
+    if kDebugLogs {
+        fmt.Printf("Using %d worker go routines\n", nWorkers)
+    }
+	tokens := make(chan struct{}, nWorkers)
 	var wg sync.WaitGroup
 	for i, part := range *parts {
 		tokens <- struct{}{} // Acquire capacity
@@ -117,7 +120,8 @@ func processSummaries(file *os.File) *map[string]*Summary {
 			log.Fatalf("Failed to read file partition: %v", err)
 		}
 		go func(d *string, index int) {
-			processPartition(d, index, reusltsCh)
+            res := processPartition(d, index)
+            reusltsCh <- res
 			<-tokens // Release
 			wg.Done()
 		}(data, i)

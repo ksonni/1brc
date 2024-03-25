@@ -73,12 +73,8 @@ func readPartition(file *os.File, part Partition) (*string, error) {
 	return &s, nil
 }
 
-func processPartition(data *string, index int, ch chan<- map[string]*Summary) {
+func processPartition(data *string, index int) map[string]*Summary {
 	counts := make(map[string]*Summary)
-	processPartitionMap(data, counts, index, ch)
-}
-
-func processPartitionMap(data *string, counts map[string]*Summary, index int, ch chan<- map[string]*Summary) {
 	var lines int64
 	wordStart := 0
 	wordEnd := 0
@@ -127,8 +123,8 @@ func processPartitionMap(data *string, counts map[string]*Summary, index int, ch
 			}
 		}
 	}
-	ch <- counts
 	if kDebugLogs {
 		fmt.Printf("Partition %d: processed %.2fM lines\n", index, float64(lines)/1_000_000)
 	}
+    return counts
 }
