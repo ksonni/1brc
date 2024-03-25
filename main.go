@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"sync"
 	"time"
 )
@@ -13,6 +14,7 @@ const kPartitionSizeBytes int64 = 32 * 1024 * 1024
 const kMaxChannels int64 = 8
 const kExpectedResults = 10_000
 
+// 20s on Macbook Pro M1 8 core
 func main() {
 	start := time.Now()
 
@@ -22,21 +24,57 @@ func main() {
 	}
 	defer file.Close()
 
-	out := processConcurrentByPartition(file)
+	out := processSummaries(file)
+    result := formatResults(out)
 
-	fmt.Printf("Got %d entries in result\n", len(out))
+	fmt.Printf("Got %d entries in result\n", len(*result))
 
 	fmt.Printf("Time elapsed: %fs\n", time.Now().Sub(start).Seconds())
 }
 
-// 19s on Macbook Pro M1 8 core
-func processConcurrentByPartition(file *os.File) map[string]*Summary {
+type Summary struct {
+	total int64
+	count int64
+	min   int64
+	max   int64
+}
+
+type Result struct {
+	name string
+	mean float64
+	min  float64
+	max  float64
+}
+
+func formatResults(summaries *map[string]*Summary) *[]Result {
+    s := *summaries
+    keys := make([]string, len(s))
+    i := 0
+    for k := range s {
+        keys[i] = k
+        i += 1 
+    }
+    slices.Sort(keys)
+    results := make([]Result, len(s))
+    for i, key := range keys {
+        summary := s[key]
+        results[i] = Result{
+            name: key,
+            mean: float64(summary.total)/float64(summary.count)/10,
+            max: float64(summary.max)/10,
+            min: float64(summary.min)/10,
+        }
+    }
+    return &results
+}
+
+func processSummaries(file *os.File) *map[string]*Summary {
 	// Break down the task into managable partitions
 	parts, err := calcPartitions(file, kPartitionSizeBytes)
 	if err != nil {
 		log.Fatalf("Failed to calculate file partitions: %v", err)
 	}
-	fmt.Printf("Processing concurrently by partition: %d parts\n", len(*parts))
+	fmt.Printf("Processing concurrently by partition: %d partitions\n", len(*parts))
 
 	// Channel to aggregate results
 	results := make(map[string]*Summary)
@@ -79,5 +117,5 @@ func processConcurrentByPartition(file *os.File) map[string]*Summary {
 
 	close(reusltsCh)
 	<-reusltsComplete
-	return results
+	return &results
 }
