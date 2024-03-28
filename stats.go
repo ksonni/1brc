@@ -69,7 +69,7 @@ func calcStats(data *string, index int) map[string]*RawStat {
 			}
 		}
 	}
-	if kDebugLogs {
+	if kDebugMode {
 		fmt.Printf("Chunk %d: processed %.3fM lines\n", index, float64(lines)/1_000_000)
 	}
 	return stats

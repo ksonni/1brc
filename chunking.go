@@ -21,7 +21,7 @@ func demarcateChunks(file *os.File, maxChunkSize int64) (*[]FileChunk, error) {
 	size := stat.Size()
 	chunkSize := min(size, maxChunkSize)
 
-	if kDebugLogs {
+	if kDebugMode {
 		fmt.Printf("Size of file: %s\n", formatBytes(size))
 		fmt.Printf("Target size per chunk: %s\n", formatBytes(chunkSize))
 	}

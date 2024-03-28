@@ -12,10 +12,20 @@ import (
 const kFilePath = "./data/measurements.txt"
 const kChunkSizeBytes int64 = 32 * 1024 * 1024
 const kExpectedResults = 10_000
-const kDebugLogs = false
+const kDebugMode = false
+const kProfilingOutput = "cpu.prof"
 
 // 14-15s on Macbook Pro M1 8 core
 func main() {
+    if kDebugMode {
+        fmt.Println("Starting profiler")
+        pFile, error := startProfiler(kProfilingOutput)
+        if error != nil {
+            log.Fatalf("Failed to start profiler: %v", error)
+        }
+        defer stopProfiler(pFile)
+    }
+
 	fmt.Println("Procesing file...")
 	start := time.Now()
 
@@ -41,7 +51,7 @@ func ProcessFile() (*[]Stat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to demarcate file chunks: %v", err)
 	}
-	if kDebugLogs {
+	if kDebugMode {
 		fmt.Printf("Processing %d chunks:\n", len(*chunks))
 	}
 
@@ -68,7 +78,7 @@ func ProcessFile() (*[]Stat, error) {
 
 	// Worker routines to process data
 	nWorkers := runtime.NumCPU()
-	if kDebugLogs {
+	if kDebugMode {
 		fmt.Printf("Using %d worker go routines\n", nWorkers)
 	}
 	tokens := make(chan struct{}, nWorkers)
